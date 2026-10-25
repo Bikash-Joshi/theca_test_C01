@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { getProfile } from "@/lib/session";
 import AppBar from "@mui/material/AppBar";
 import Button from "@mui/material/Button";
 import Toolbar from "@mui/material/Toolbar";
@@ -68,12 +68,8 @@ export default function Home() {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) =>
-      setSignedIn(!!session),
-    );
-    return () => data.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSignedIn(!!getProfile());
   }, []);
 
   return (

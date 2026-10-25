@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import NextLink from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -13,7 +13,7 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { createClient } from "@/lib/supabase/client";
+import { getProfile, setProfile } from "@/lib/session";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import Visibility from "@mui/icons-material/Visibility";
@@ -28,48 +28,40 @@ const brandSx = {
 
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const params = useSearchParams();
-  const [error, setError] = useState(
-    params.get("error") === "confirmation_failed"
-      ? "That confirmation link is invalid or has expired."
-      : "",
-  );
+  const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setInfo("");
     const form = new FormData(event.currentTarget);
-    setLoading(true);
-    const { error } = await createClient().auth.signInWithPassword({
-      email: String(form.get("email")).trim(),
-      password: String(form.get("password")),
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
+    const email = String(form.get("email")).trim();
+    if (!email || !String(form.get("password"))) {
+      setError("Enter your email and password.");
       return;
     }
+    setLoading(true);
+    // Static: any credentials work; reuse the saved profile if the email matches.
+    const saved = getProfile();
+    setProfile(
+      saved?.email === email
+        ? saved
+        : { email, name: "", address: "", phone: "" },
+    );
     router.push("/account");
-    router.refresh();
   };
 
-  const handleForgot = async (email: string) => {
+  const handleForgot = (email: string) => {
     setError("");
     setInfo("");
     if (!email.trim()) {
       setError("Enter your email address first.");
       return;
     }
-    const { error } = await createClient().auth.resetPasswordForEmail(
-      email.trim(),
-      { redirectTo: `${window.location.origin}/auth/callback` },
-    );
-    if (error) setError(error.message);
-    else setInfo("If that email has an account, a reset link is on its way.");
+    setInfo("If that email has an account, a reset link is on its way.");
   };
 
   return (

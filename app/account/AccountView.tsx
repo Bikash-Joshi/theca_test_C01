@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
@@ -11,37 +11,41 @@ import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { createClient } from "@/lib/supabase/client";
+import { clearProfile, getProfile, type Profile } from "@/lib/session";
 
-type Props = { email: string; name: string; address: string; phone: string };
-
-export default function AccountView({ email, name, address, phone }: Props) {
+export default function AccountView() {
   const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<{
     severity: "success" | "error";
     text: string;
   } | null>(null);
 
-  const signOut = async () => {
-    await createClient().auth.signOut();
+  useEffect(() => {
+    const saved = getProfile();
+    if (!saved) router.replace("/login");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    else setProfile(saved);
+  }, [router]);
+
+  const signOut = () => {
+    clearProfile();
     router.push("/");
-    router.refresh();
   };
 
-  const changePassword = async (event: React.FormEvent) => {
+  const changePassword = (event: React.FormEvent) => {
     event.preventDefault();
     if (password.length < 8) {
       setMessage({ severity: "error", text: "Use at least 8 characters." });
       return;
     }
-    const { error } = await createClient().auth.updateUser({ password });
-    if (error) setMessage({ severity: "error", text: error.message });
-    else {
-      setMessage({ severity: "success", text: "Password updated." });
-      setPassword("");
-    }
+    setMessage({ severity: "success", text: "Password updated." });
+    setPassword("");
   };
+
+  if (!profile) return null;
+  const { email, name, address, phone } = profile;
 
   const details = [
     ["Name", name],

@@ -3,13 +3,12 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { createClient } from "@/lib/supabase/client";
+import { setProfile } from "@/lib/session";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 
@@ -54,10 +53,6 @@ export default function SignupPage() {
     phone: "",
   });
   const [errors, setErrors] = useState<Errors>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
   const router = useRouter();
 
   const handleChange =
@@ -66,41 +61,20 @@ export default function SignupPage() {
       if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
     };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    setFormError("");
     const found = validate(values);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    setSubmitting(true);
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
+    // Static: keep the profile locally and go straight to the account page.
+    setProfile({
       email: values.email.trim(),
-      password: values.password,
-      options: {
-        data: {
-          name: values.name.trim(),
-          address: values.address.trim(),
-          phone: values.phone.trim(),
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      name: values.name.trim(),
+      address: values.address.trim(),
+      phone: values.phone.trim(),
     });
-    setSubmitting(false);
-
-    if (error) {
-      setFormError(error.message);
-      return;
-    }
-    // With email confirmation enabled there is no session until the link is clicked.
-    if (data.session) {
-      router.push("/account");
-      router.refresh();
-    } else {
-      setNeedsConfirmation(true);
-      setSubmitted(true);
-    }
+    router.push("/account");
   };
 
   return (
@@ -191,30 +165,6 @@ export default function SignupPage() {
         </Stack>
 
         <Box sx={{ m: "auto", width: "100%", maxWidth: 420, py: 6 }}>
-          {submitted ? (
-            <Box>
-              <Typography variant="overline" color="text.secondary">
-                WELCOME
-              </Typography>
-              <Typography variant="h2" sx={{ fontSize: 40, mt: 1, mb: 1.5 }}>
-                Thank you, {values.name.trim().split(/\s+/)[0]}.
-              </Typography>
-              <Alert severity="success" sx={{ my: 3, borderRadius: 0 }}>
-                {needsConfirmation
-                  ? `Your account has been created. Check ${values.email.trim()} for a confirmation link, then sign in.`
-                  : "Your account has been created."}
-              </Alert>
-              <Button
-                component={NextLink}
-                href="/login"
-                variant="contained"
-                size="large"
-                endIcon={<ArrowOutwardIcon />}
-              >
-                Go to sign in
-              </Button>
-            </Box>
-          ) : (
             <>
               <Typography variant="overline" color="text.secondary">
                 CREATE YOUR ACCOUNT
@@ -295,20 +245,13 @@ export default function SignupPage() {
                   helperText={errors.phone}
                 />
 
-                {formError && (
-                  <Alert severity="error" sx={{ borderRadius: 0 }}>
-                    {formError}
-                  </Alert>
-                )}
-
                 <Button
                   type="submit"
                   variant="contained"
                   size="large"
-                  disabled={submitting}
                   endIcon={<ArrowOutwardIcon />}
                 >
-                  {submitting ? "Creating account…" : "Create Account"}
+                  Create Account
                 </Button>
               </Stack>
 
@@ -327,7 +270,6 @@ export default function SignupPage() {
                 </Box>
               </Typography>
             </>
-          )}
         </Box>
 
         <Stack
